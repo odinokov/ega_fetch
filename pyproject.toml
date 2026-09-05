@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ega-fetch"
+dynamic = ["version"]
+description = "Converge a directory to a verified copy of an EGA dataset via Live Outbox (SFTP + Crypt4GH)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Denis Odinokov" }]
+keywords = ["EGA", "genomics", "crypt4gh", "sftp", "download"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Typing :: Typed",
+]
+# The tool itself has NO runtime Python dependencies: standard library only.
+# Its external requirements are the `sftp` and `crypt4gh` executables on PATH.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "mypy>=1.0", "ruff>=0.4"]
+
+[project.scripts]
+ega-fetch = "ega_fetch.cli:main"
+
+[project.urls]
+Repository = "https://github.com/odinokov/ega_fetch"
+
+# Single source of truth for the version: the package constant.
+[tool.hatch.version]
+path = "src/ega_fetch/constants.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ega_fetch"]
+
+# ---------------------------------------------------------------------------
+# lint
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py38"   # matches requires-python; keeps HPC login nodes in scope
+src = ["src", "tests"]
+# The parent directory's .gitignore is deny-by-default (`*`) to protect
+# credentials and controlled-access data. Honouring it here would silently
+# make ruff lint nothing at all, so this tree opts out of it explicitly.
+respect-gitignore = false
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "SIM", "UP", "C4", "RET", "ARG", "I"]
+# Documented relaxations, not blanket suppression.
+# UP006/UP007/UP035/UP045 rewrite typing.List/Optional[X] into list/X | None.
+# `from __future__ import annotations` makes that legal at the 3.8 floor, but
+# only inside annotations -- and the distinction is invisible at a glance, so a
+# later edit that moves such a type into a runtime position (a cast, a
+# TypeVar bound) would break on 3.8 silently. The stated floor is 3.8 because
+# HPC login nodes are this tool's deployment target, so the typing.* spellings
+# stay until the floor moves.
+ignore = ["UP006", "UP007", "UP035", "UP045"]
+
+# ---------------------------------------------------------------------------
+# types — strict, with the seams documented rather than blanket-disabled
+# ---------------------------------------------------------------------------
+[tool.mypy]
+# No python_version pin: current mypy refuses to target 3.8. The 3.8 floor
+# is enforced instead by ruff target-version = py38 and by a real 3.8
+# byte-compile of the package (see CHANGELOG, Phase 2).
+strict = true
+files = ["src", "tests"]
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
